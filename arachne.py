@@ -8,8 +8,10 @@ import re
 import urllib.request
 import argparse
 
+ip_targets = list() #List containing all IP targets
 responsive_ips = list() #Global list of IPs with HTTP responses
 lock = threading.Lock() #Lock for the global IP list
+
 
 def get_title(ip):
 	''''Use regex to get the title from the html document at the given IP address'''
@@ -53,7 +55,7 @@ def get_ip_range(start_ip, end_ip):
 		ip_range.append(".".join(map(str, temp)))    
 	return ip_range
 	
-def divide_ip_range(ip_range, thread_count):
+def divide_ip_range(ip_range, thread_count): # Deprecated
 	'''Divide the given list of IP addresses by the number of threads.'''
 	avg = len(ip_range) / float(thread_count)
 	out = []
@@ -63,13 +65,13 @@ def divide_ip_range(ip_range, thread_count):
 		last += avg
 	return out
 	
-def scan(ip_list):
-	'''Scan each IP in the given list, and add it to the global list of responsive IPs if it returns HTTP 200.'''
-	for ip in ip_list:
-		response = get_http_status_code(ip)
-		print('Response from ' + ip + ': ' + str(response))
-		if(response == 200):
-			add_to_responsive_ips(ip)
+def scan():
+	'''Pop an IP off the global list and scan it'''
+	ip = ip_targets.pop()
+	response = get_http_status_code(ip)
+	print('Response from ' + ip + ': ' + str(response))
+	if(response == 200):
+		add_to_responsive_ips(ip)
 
 def sort_ips(ips):
 	'''Sort the given list of IPs from lowest to highest.'''
@@ -95,10 +97,10 @@ ip_end = args.e
 threads = args.n
 
 '''Main script'''
-ip_range = get_ip_range(ip_begin, ip_end)
-chunked_ranges = (divide_ip_range(ip_range, threads))
+ip_targets = get_ip_range(ip_begin, ip_end)
+# chunked_ranges = (divide_ip_range(ip_range, threads))
 executor = concurrent.futures.ThreadPoolExecutor(int(threads))
-futures = [executor.submit(scan, ip_list) for ip_list in chunked_ranges]
+futures = [executor.submit(scan) for ip in ip_targets]
 concurrent.futures.wait(futures)
 if(responsive_ips): 
 	print('These IPs returned HTTP 200 response:')
